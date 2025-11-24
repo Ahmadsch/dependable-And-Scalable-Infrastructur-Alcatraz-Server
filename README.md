@@ -49,63 +49,60 @@ alcatraz/
 
 ---
 
-# 3. Setup
+
+# 3. Setup (native, Windows)
 
 ## 3.1. Install Spread Java Library
 
 Spread does not exist in Maven Central.
 Install it into your local Maven repo:
 
-```
+```bash
 scripts/install-spread-jar.bat
 ```
 
-This installs in .m2:
+This installs in `.m2`:
 
-```
+```text
 groupId=org.spread
 artifactId=spread
 version=4.0.0
 ```
 
-
-
 ---
 
-## 3.2 Start Spread Daemon
+## 3.2 Start Spread Daemon (Windows host)
 
 Spread must run before any node starts.
 
-```
+```bash
 scripts/start-spread.bat
 ```
 
 The script calls:
 
-```
+```bash
 spread-bin-4.0.0/bin/win32/spread.exe -n localhost -c spread.conf
 ```
 
-This starts a Spread daemon bound to **localhost**.
-The included configuration also uses the localhost segment for now:
+Example configuration:
 
-```
+```conf
 Spread_Segment 192.168.0.255:4803 {
     localhost   127.0.0.1
     mymachine   192.168.0.76
 }
 ```
 
+This starts a Spread daemon bound to `localhost`.
+
 ---
 
-
-## 3.3 Start Cluster Nodes
+## 3.3 Start Cluster Nodes (native)
 
 The cluster consists of 3 HTTP servers + 1 Spread daemon.
 
-Start all nodes:
-
-```
+```bash
 scripts/start-cluster.bat
 ```
 
@@ -121,43 +118,126 @@ Every node joins the same Spread group (`alcatrazGroup`).
 
 ---
 
-## 3.4 Docker Build
 
-Im Projektverzeichnis:
+# 4. Docker Deployment – 3 PCs, 3 Nodes (Spread inside each container)
 
+In this mode:
+
+* each physical machine runs **one** container
+* each container runs **its own Spread daemon** and **the Spring Boot node**
+* all three daemons form one Spread segment via IPs
+
+
+## 4.1 Spread configuration for multiple hosts
+
+For a deployment with three physical machines, each machine runs one container and all three Spread daemons form a single segment.
+
+### 4.1.1 Determine IPv4 addresses
+
+On **Windows**, run in `cmd`:
+
+```bat
+ipconfig | findstr IPv4
+````
+
+Select the IPv4 address from the network interface that is in the common LAN (for example `192.168.0.x`).
+
+On **Linux**, run:
+
+```bash
+ip -4 addr
 ```
+
+or
+
+```bash
+ip addr show
+```
+
+Again, select the IPv4 address in the LAN where all three machines can reach each other.
+
+Assume the following addresses:
+
+* PC1: `192.168.0.76`
+* PC2: `192.168.0.78`
+* PC3: `192.168.0.79`
+
+### 4.1.2 Spread configuration file
+
+After finding the local IPv4 address (step 4.1.1), only `node2` and `node3` are updated in `spread-Docker.conf`.  
+`node1` stays unchanged because it already contains the IPv4 of my own machine.
+
+```conf
+Spread_Segment 192.168.0.255:4803 {
+    node1 192.168.0.76
+    node2 192.168.0.XX
+    node3 192.168.0.YY
+}
+```
+
+Important:
+
+* The configuration file must be **identical on all three machines**.
+* Each entry maps a logical node id (`node1`, `node2`, `node3`) to the IPv4 address found in step 4.1.1.
+* The Dockerfile copies this file into the image as `/etc/spread.conf`, so the same segment definition is used in every container.
+
+
+## 4.2 Environment variables
+
+The container expects:
+
+* `SPREAD_NODE` – logical node id (`node1`, `node2`, `node3`)
+* `SPREAD_HOST` – IP address at which this node’s Spread daemon is reachable
+  (must match the IP used in `spread-Docker.conf` for this node)
+* `SERVER_PORT` – HTTP port for the Spring Boot application
+
+The entrypoint does roughly:
+
+```sh
+spread -n $SPREAD_NODE -c /etc/spread.conf &
+sleep 3
+java -jar app.jar \
+  --server.port=$SERVER_PORT \
+  --spread.host=$SPREAD_HOST \
+  --spread.port=4803 \
+  --spread.node-id=$SPREAD_NODE
+```
+
+## 4.3 build commands 
+
+```bash
 docker build -t alcatraz .
 ```
-
-Dies erzeugt ein Image mit dem Spring-Boot-Backend und dem eingebauten Spread‑Client.
-
 ---
 
-## 4. Docker Run – 3 Nodes
+## 4.3 Run commands (one container per PC, host network)
 
-Jeder Node ist ein eigener Container.
-Spread läuft weiterhin auf Windows.
+Assume:
 
-### Node 1
+* PC1: `192.168.0.76` → `node1`
+* PC2: `192.168.0.78` → `node2`
+* PC3: `192.168.0.79` → `node3`
 
-```
-docker run -d -p 8080:8080 -e server.port=8080 -e spread.host=host.docker.internal -e spread.port=4803 -e spread.group=alcatrazGroup -e spread.node-id=node1 alcatraz
-```
+### PC1 – node1
 
-### Node 2
-
-```
-docker run -d -p 8081:8081 -e server.port=8081 -e spread.host=host.docker.internal -e spread.port=4803 -e spread.group=alcatrazGroup -e spread.node-id=node2 alcatraz
+```bash
+docker run --network host -d -e SPREAD_NODE=node1 -e SPREAD_HOST=192.168.0.76 -e SERVER_PORT=8080 --name node1 alcatraz
 ```
 
-### Node 3
+### PC2 – node2
 
+```bash
+docker run --network host -d -e SPREAD_NODE=node2 -e SPREAD_HOST=192.168.0.78 -e SERVER_PORT=8081 --name node2 alcatraz
 ```
-docker run -d -p 8082:8082 -e server.port=8082 -e spread.host=host.docker.internal -e spread.port=4803 -e spread.group=alcatrazGroup -e spread.node-id=node3 alcatraz
+
+### PC3 – node3
+
+```bash
+docker run --network host -d -e SPREAD_NODE=node3 -e SPREAD_HOST=192.168.0.79 -e SERVER_PORT=8082 --name node3 alcatraz
 ```
 
 ---
-## 3.4 Swagger UI
+## 4.4 Swagger UI
 
 After starting any node:
 
@@ -167,7 +247,7 @@ http://localhost:<port>/swagger-ui.html
 
 ---
 
-# 4. Master Election
+# 5. Master Election
 
 Each membership change triggers:
 
@@ -187,7 +267,7 @@ Reads and writes are synchronized to avoid mixed states across threads.
 
 ---
 
-# 5. HTTP Routing
+# 6. HTTP Routing
 
 All writes must go to the master.
 
@@ -206,7 +286,7 @@ PlayerController.redirectToMaster()
 
 ---
 
-# 6. API Summary
+# 7. API Summary
 
 ### POST `/players/register`
 
