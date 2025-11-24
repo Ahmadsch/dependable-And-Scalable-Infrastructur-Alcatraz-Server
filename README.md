@@ -120,6 +120,43 @@ This launches:
 Every node joins the same Spread group (`alcatrazGroup`).
 
 ---
+
+## 3.4 Docker Build
+
+Im Projektverzeichnis:
+
+```
+docker build -t alcatraz .
+```
+
+Dies erzeugt ein Image mit dem Spring-Boot-Backend und dem eingebauten Spread‑Client.
+
+---
+
+## 4. Docker Run – 3 Nodes
+
+Jeder Node ist ein eigener Container.
+Spread läuft weiterhin auf Windows.
+
+### Node 1
+
+```
+docker run -d -p 8080:8080 -e server.port=8080 -e spread.host=host.docker.internal -e spread.port=4803 -e spread.group=alcatrazGroup -e spread.node-id=node1 alcatraz
+```
+
+### Node 2
+
+```
+docker run -d -p 8081:8081 -e server.port=8081 -e spread.host=host.docker.internal -e spread.port=4803 -e spread.group=alcatrazGroup -e spread.node-id=node2 alcatraz
+```
+
+### Node 3
+
+```
+docker run -d -p 8082:8082 -e server.port=8082 -e spread.host=host.docker.internal -e spread.port=4803 -e spread.group=alcatrazGroup -e spread.node-id=node3 alcatraz
+```
+
+---
 ## 3.4 Swagger UI
 
 After starting any node:
