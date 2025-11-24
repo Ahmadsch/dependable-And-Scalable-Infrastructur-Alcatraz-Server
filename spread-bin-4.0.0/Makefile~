@@ -1,0 +1,83 @@
+.PHONY: all clean install uninstall
+# Change HOSTARCH to whatever platform name you are building. 
+# The available choices can be found by listing the ../lib directory.
+#
+# Change DESTDIR to wherever you want to install the binaries into
+HOSTARCH=i686-pc-linux-gnu
+DESTDIR=/tmp/testspread4/
+
+## Do not change anything below here
+bindir=bin
+libdir=lib
+includedir=include
+INSTALL=install
+
+SUBDIRS=docs examples 
+INSTALLSUBDIRS=docs
+
+SHLIBFILES=$(notdir $(wildcard lib/$(HOSTARCH)/lib*.so*))
+DYNLIBFILES=$(notdir $(wildcard lib/$(HOSTARCH)/lib*.dylib))
+
+export DESTDIR HOSTARCH
+
+all: $(SUBDIRS) 
+	for dir in $(SUBDIRS); do \
+		( $(MAKE) -C $$dir); \
+	done
+
+clean:
+	for dir in $(SUBDIRS); do \
+		( $(MAKE) -C $$dir clean); \
+	done
+
+install: $(INSTALLSUBDIRS) 
+	for dir in $(INSTALLSUBDIRS); do \
+		( $(MAKE) -C $$dir install); \
+	done
+# install pre-built binary programs and libraries
+	buildtools/mkinstalldirs $(DESTDIR)$(bindir)
+	buildtools/mkinstalldirs $(DESTDIR)$(libdir)
+	buildtools/mkinstalldirs $(DESTDIR)$(includedir)
+
+	$(INSTALL) -m 0755 -s bin/$(HOSTARCH)/spread $(DESTDIR)$(bindir)/spread
+	$(INSTALL) -m 0755 -s bin/$(HOSTARCH)/spmonitor $(DESTDIR)$(bindir)/spmonitor
+	$(INSTALL) -m 0755 -s bin/$(HOSTARCH)/spuser $(DESTDIR)$(bindir)/spuser
+	$(INSTALL) -m 0755 -s bin/$(HOSTARCH)/sptuser $(DESTDIR)$(bindir)/sptuser
+	$(INSTALL) -m 0755 -s bin/$(HOSTARCH)/spflooder $(DESTDIR)$(bindir)/spflooder
+	$(INSTALL) -m 0755 -s bin/$(HOSTARCH)/flush_user $(DESTDIR)$(bindir)/flush_user
+
+	$(INSTALL) -m 644 lib/$(HOSTARCH)/libspread.a $(DESTDIR)$(libdir)/libspread.a
+	$(INSTALL) -m 644 lib/$(HOSTARCH)/libspread-core.a $(DESTDIR)$(libdir)/libspread-core.a
+	$(INSTALL) -m 644 lib/$(HOSTARCH)/libtspread-core.a $(DESTDIR)$(libdir)/libtspread-core.a
+	$(INSTALL) -m 644 include/sp.h $(DESTDIR)$(includedir)/sp.h
+	$(INSTALL) -m 644 include/sp_func.h $(DESTDIR)$(includedir)/sp_func.h
+	$(INSTALL) -m 644 include/sp_events.h $(DESTDIR)$(includedir)/sp_events.h
+	$(INSTALL) -m 644 include/fl.h $(DESTDIR)$(includedir)/fl.h
+ifneq ($(SHLIBFILES),)
+	for file in $(SHLIBFILES) ; do \
+	  $(INSTALL) -m 755 lib/$(HOSTARCH)/$$file $(DESTDIR)$(libdir)/$$file ;\
+	done
+endif
+ifneq ($(DYNLIBFILES),)
+	for file in $(DYNLIBFILES) ; do \
+	  $(INSTALL) -m 755 lib/$(HOSTARCH)/$$file $(DESTDIR)$(libdir)/$$file ;\
+	done
+endif
+
+uninstall: 
+	for dir in $(INSTALLSUBDIRS); do \
+		( $(MAKE) -C $$dir uninstall); \
+	done
+	-rm -f $(DESTDIR)$(bindir)/spread
+	-rm -f $(DESTDIR)$(bindir)/spmonitor
+	-rm -f $(DESTDIR)$(bindir)/spuser
+	-rm -f $(DESTDIR)$(bindir)/spflooder
+	-rm -f $(DESTDIR)$(bindir)/sptuser
+	-rm -f $(DESTDIR)$(bindir)/flush_user
+	-rm -f $(DESTDIR)$(libdir)/libspread.*
+	-rm -f $(DESTDIR)$(libdir)/libspread-core.*
+	-rm -f $(DESTDIR)$(libdir)/libtspread-core.*
+	-rm -f $(DESTDIR)$(includedir)/sp.h
+	-rm -f $(DESTDIR)$(includedir)/sp_func.h
+	-rm -f $(DESTDIR)$(includedir)/sp_events.h
+	-rm -f $(DESTDIR)$(includedir)/fl.h
