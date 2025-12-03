@@ -76,7 +76,7 @@ version=4.0.0
 Spread must run before any node starts.
 
 ```bash
-scripts/start-spread.bat
+scripts/start-spread-node3.bat
 ```
 
 The script calls:
@@ -103,7 +103,7 @@ This starts a Spread daemon bound to `localhost`.
 The cluster consists of 3 HTTP servers + 1 Spread daemon.
 
 ```bash
-scripts/start-cluster.bat
+scripts/start-node1.bat
 ```
 
 This launches:
