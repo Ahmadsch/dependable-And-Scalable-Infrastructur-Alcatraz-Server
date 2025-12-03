@@ -23,9 +23,6 @@ public class PlayerRegistry {
     /** Map playerName → callbackUrl. */
     private final Map<String, String> players = new HashMap<>();
 
-    /** Indicates whether the game has been started. */
-    private boolean gameStarted = false;
-
     /** Maximum number of players allowed. */
     private static final int MAX_PLAYERS = 4;
 
@@ -46,7 +43,6 @@ public class PlayerRegistry {
      * @return true if the player was added
      */
     public synchronized boolean add(String name, String callback) {
-        if (gameStarted) return false;
         if (players.size() >= MAX_PLAYERS) return false;
         if (players.containsKey(name)) return false;
         if (players.containsValue(callback)) return false;
@@ -98,16 +94,7 @@ public class PlayerRegistry {
      * @return true if the game was not marked as started and minimum two players are registered
      */
     public synchronized boolean tryStart() {
-        if (gameStarted) return false;
         return players.size() >= MIN_PLAYERS;
-    }
-
-    /**
-     * For callers that want to force the state change after validation
-     * outside this class.
-     */
-    public synchronized void markStarted() {
-        gameStarted = true;
     }
 
     /**
@@ -115,14 +102,6 @@ public class PlayerRegistry {
      */
     public synchronized void reset() {
         players.clear();
-        gameStarted = false;
-    }
-
-    /**
-     * @return true if the game is marked as started
-     */
-    public synchronized boolean isStarted() {
-        return gameStarted;
     }
 
 }

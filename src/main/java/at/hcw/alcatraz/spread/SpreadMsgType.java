@@ -2,8 +2,7 @@ package at.hcw.alcatraz.spread;
 
 public enum SpreadMsgType {
     UPDATE,
-    RESET,
-    START;
+    RESET;
 
     public static SpreadMsgType from(String raw) {
         try {

@@ -86,10 +86,6 @@ public class SpreadManager implements SpreadMessageHandler {
                 registry.reset();
                 System.out.println("[Spread] Lobby reset received from Master: " + sender);
             }
-            case START -> {
-                registry.markStarted();
-                System.out.println("[Spread] Game start signal received from Master: " + sender);
-            }
             default -> System.err.println("[Spread] Unknown packet type: " + packet.type());
         }
     }
@@ -127,12 +123,7 @@ public class SpreadManager implements SpreadMessageHandler {
 
         if (election.isMaster() && info.isCausedByJoin()) {
             System.out.println("[Spread] snapshot handover to new joining node. Name: " + info.getJoined().toString());
-
             replicate();
-
-            if (registry.isStarted()) {
-                broadcastStart();
-            }
         }
 
         election.evaluate(ids, selfId);
@@ -166,13 +157,6 @@ public class SpreadManager implements SpreadMessageHandler {
      */
     public void replicate() {
         spread.send(new SpreadPacket(SpreadMsgType.UPDATE, registry.snapshot()));
-    }
-
-    /**
-     * Broadcasts game start flag to all nodes.
-     */
-    public void broadcastStart() {
-        spread.send(new SpreadPacket(SpreadMsgType.START, null));
     }
 
     /**

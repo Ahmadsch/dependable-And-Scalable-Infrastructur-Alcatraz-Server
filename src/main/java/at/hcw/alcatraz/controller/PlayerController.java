@@ -13,6 +13,9 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.URI;
 import java.util.*;
 
@@ -34,14 +37,47 @@ public class PlayerController {
     private ResponseEntity<Void> redirectToMaster(String path) {
         String master = spread.getCurrentMasterId();
         int port = spread.getMasterPort();
+        String ip = getWifiIp();
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Master-Node", master);
-        headers.setLocation(URI.create("http://localhost:" + port + path));
-        System.out.println("Redirecting to master " + master + " -> http://localhost:" + port + path);
+        headers.setLocation(URI.create("http://" + ip + ":" + port + path));
+        System.out.println("Redirecting to master " + master + " --> http://" + ip + ":" + port + path);
         return ResponseEntity.status(HttpStatus.TEMPORARY_REDIRECT)
                 .headers(headers)
                 .build();
+    }
+
+    public static String getWifiIp() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+
+                String name = iface.getDisplayName().toLowerCase();
+                if (!iface.isUp()) continue;
+                if (iface.isLoopback()) continue;
+                if (name.contains("virtual")) continue;
+                if (name.contains("vmware")) continue;
+                if (name.contains("hyper-v")) continue;
+                if (name.contains("vbox")) continue;
+
+                // Nur WLAN akzeptieren, Weil Client läuft auf einen anderen PC
+                if (!name.contains("wi-fi") && !name.contains("wlan") && !name.contains("wireless"))
+                    continue;
+
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (addr instanceof Inet4Address) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return null;
     }
 
     // -------- register --------
@@ -158,10 +194,10 @@ public class PlayerController {
                         .body("Game start aborted. Client '" + playerName + "' is unreachable.");
             }
         }
-        registry.markStarted();
-        spread.broadcastStart();
+        registry.reset();
+        spread.broadcastReset();
 
-        return ResponseEntity.ok("Game started. All clients notified.");
+        return ResponseEntity.ok("Game started. All clients notified. Lobby Reset");
     }
 
     // -------- finish --------
@@ -177,9 +213,6 @@ public class PlayerController {
 
         if (!spread.isMaster())
             return redirectToMaster("/players/game/finish");
-
-        if (!registry.isStarted())
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("No active game");
 
         registry.reset();
         spread.broadcastReset();

@@ -11,7 +11,7 @@ Backups mirror state through replication messages.
 
 * Master election based on smallest node id (`node1 < node2 < node3`).
 * Membership tracking through Spread.
-* State replication (player list + game-start flag).
+* State replication (player list).
 * HTTP redirect to current master.
 * Up to 4 players.
 * Game can start when at least 2 players are registered.
@@ -274,7 +274,7 @@ All writes must go to the master.
 Non-master nodes return `307 Temporary Redirect`:
 
 ```
-Location: http://localhost:<master-port>/<same-path>
+Location: http://<ip>:<master-port>/<same-path>
 X-Master-Node: node1
 ```
 
@@ -323,19 +323,11 @@ Master only.
 
 ---
 
-
-
-Here is the updated version based on the new behavior (game start **fails** if any client callback is unreachable).
-Clear, direct, no filler.
-
----
-
 ### POST `/players/game/start`
 
 Rules:
 
 * at least 2 players
-* game not already started
 * master only
 
 The master tries to notify **all registered clients** before the game is allowed to start.
@@ -351,8 +343,7 @@ Flow:
    The server returns `503` and the registry state stays unchanged.
 4. Only if **all** clients respond successfully:
 
-    * `markStarted()` is executed
-    * a `START` message is broadcast to the cluster
+    * a `RESET` message is broadcast to the cluster
     * the controller returns `200`
 
 Example callback request:
