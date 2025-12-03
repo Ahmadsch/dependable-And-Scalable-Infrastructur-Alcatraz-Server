@@ -103,7 +103,7 @@ This starts a Spread daemon bound to `localhost`.
 The cluster consists of 3 HTTP servers + 1 Spread daemon.
 
 ```bash
-scripts/start-node1.bat
+scripts/build-run-server-1.bat
 ```
 
 This launches:
